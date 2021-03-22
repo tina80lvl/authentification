@@ -41,8 +41,9 @@ class Session:
 
     def validate(self, login, password):
         # one request per second
-        if login in self.logins and time.time() - self.logins[login] < 1000:
-                return []
+        if login in self.logins and time.time() - self.logins[login] < 1:
+            print('❌Too many attempts!')
+            return []
         self.logins[login] = time.time()
         con = sql.connect('test.db')
         with con:
