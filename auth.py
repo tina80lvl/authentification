@@ -20,10 +20,10 @@
 # - использование индексов
 # - не хранить пароли в базе в открытом виде
 
-# import psycopg2
 import sqlite3 as sql
 import time
 import uuid
+from hashlib import sha256
 
 class Person:
     def __init__(self, name, surname, birth):
@@ -36,18 +36,24 @@ class Person:
 
 
 class Session:
+    def __init__(self):
+        self.logins = dict()
+
     def validate(self, login, password):
+        # one request per second
+        if login in self.logins and time.time() - self.logins[login] < 1000:
+                return []
+        self.logins[login] = time.time()
         con = sql.connect('test.db')
         with con:
             cur = con.cursor()
-            cur.execute("SELECT * FROM 'people' WHERE login = ? AND password = ?", (login, password,))
+            cur.execute("SELECT * FROM 'people' WHERE login = ? AND password = ?", (login, sha256(password.encode('utf-8')).hexdigest(),))
             result = cur.fetchall()
-            # print(result)
             return result
 
     def login1(self):
-        login = input()
-        password = input()
+        login = input('Enter Login: ')
+        password = input('Enter Password: ')
         res = self.validate(login, password)
         if res == []:
             print('❌Invalid login/password!')
@@ -59,7 +65,7 @@ class Session:
             cur.execute("INSERT INTO logininfo VALUES (?, ?, ?)", (str(uuid.uuid4()).replace('-',''), res[0][0], token))
             con.commit()
             print('✅Logged in.')
-            return self.token
+            return token
 
     def logout1(self, token):
         con = sql.connect('test.db')
@@ -90,6 +96,7 @@ def delete_table():
         con.commit()
         print(con)
 
+
 def create_table():
     con = sql.connect('test.db')
     with con:
@@ -99,28 +106,44 @@ def create_table():
         con.commit()
         print(con)
 
+
 def fill_table():
     con = sql.connect('test.db')
     with con:
         cur = con.cursor()
-        u1 = ('dldljdbc', 'Ilya', 'Nesterenko', '17-09-1999', 'illusha', '228')
+        u1 = ('sdjfu4-ld', 'Tina', 'Smirnova', '25-08-1998', 'tina', sha256('troll'.encode('utf-8')).hexdigest())
+        u2 = ('kf93bdkkd', 'Ilya', 'Nesterenko', '17-09-1999', 'illusha', sha256('password'.encode('utf-8')).hexdigest())
+        u3 = ('dljfc-sbd', 'God', 'Smith', '01-01-0', 'god', sha256('hatezeus'.encode('utf-8')).hexdigest())
+
         cur.execute("INSERT INTO people VALUES (?, ?, ?, ?, ?, ?)", u1)
+        cur.execute("INSERT INTO people VALUES (?, ?, ?, ?, ?, ?)", u2)
+        cur.execute("INSERT INTO people VALUES (?, ?, ?, ?, ?, ?)", u3)
+
         con.commit()
         print(con)
 
 # delete_table()
 create_table()
+
+# uncomment for the first run
 # fill_table()
 
 # valid example
 session = Session()
-tok = session.login1()
-session.user(tok)
-session.logout1(tok)
+tok1 = session.login1()
+session.user(tok1)
+session.logout1(tok1)
 
 # invalid token
-tok = session.login1()
+tok2 = session.login1()
 session.user('invalid_token')
-session.logout1(tok)
+session.logout1(tok2)
 
-# equal logins
+# equal logins for one user
+tok3 = session.login1()
+tok4 = session.login1()
+session.user(tok3)
+session.user(tok4)
+session.logout1(tok3)
+session.user(tok4)
+session.logout1(tok4)
