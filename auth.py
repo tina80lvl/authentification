@@ -45,19 +45,18 @@ class Session:
             # print(result)
             return result
 
-    def __init__(self, login):
-        self.token = login + str(time.time())
-
     def login1(self):
         login = input()
         password = input()
         res = self.validate(login, password)
         if res == []:
-            raise Exception('❌Invalid login/password!')
+            print('❌Invalid login/password!')
+            return ''
         con = sql.connect('test.db')
         with con:
             cur = con.cursor()
-            cur.execute("INSERT INTO logininfo VALUES (?, ?, ?)", (str(uuid.uuid4()).replace('-',''), res[0][0], self.token))
+            token = login + str(time.time())
+            cur.execute("INSERT INTO logininfo VALUES (?, ?, ?)", (str(uuid.uuid4()).replace('-',''), res[0][0], token))
             con.commit()
             print('✅Logged in.')
             return self.token
@@ -76,8 +75,10 @@ class Session:
             cur = con.cursor()
             cur.execute("SELECT * FROM 'people' WHERE person_id = (SELECT person_id FROM 'logininfo' WHERE token =?)", (token,))
             res = cur.fetchall()
-            print(con)
-            print('Name: ', res[0][1], '\nSurname: ', res[0][2], '\nBirthday: ', res[0][3])
+            if res == []:
+                print('❌No active token!')
+            else:
+                print('Name: ', res[0][1], '\nSurname: ', res[0][2], '\nBirthday: ', res[0][3])
 
 
 def delete_table():
@@ -104,8 +105,6 @@ def fill_table():
         cur = con.cursor()
         u1 = ('dldljdbc', 'Ilya', 'Nesterenko', '17-09-1999', 'illusha', '228')
         cur.execute("INSERT INTO people VALUES (?, ?, ?, ?, ?, ?)", u1)
-        # p1 = (0,u1[0], u1[4] + u1[5] + str(time.time()))
-        # cur.execute("INSERT INTO logininfo VALUES (?, ?, ?)", p1)
         con.commit()
         print(con)
 
@@ -113,11 +112,15 @@ def fill_table():
 create_table()
 # fill_table()
 
-while (True):
-    ses1 = Session('illusha')
-    tok = ses1.login1()
-    print(tok)
-    ses1.user(tok)
-    ses1.logout1(tok)
-# p = Person('Molly', 'Smith', '25-08-1998')
-# p.print_info()
+# valid example
+session = Session()
+tok = session.login1()
+session.user(tok)
+session.logout1(tok)
+
+# invalid token
+tok = session.login1()
+session.user('invalid_token')
+session.logout1(tok)
+
+# equal logins
