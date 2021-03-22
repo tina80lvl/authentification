@@ -52,14 +52,14 @@ class Session:
         login = input()
         password = input()
         res = self.validate(login, password)
-        print('🅾️', res)
+        if res == []:
+            raise Exception('❌Invalid login/password!')
         con = sql.connect('test.db')
         with con:
             cur = con.cursor()
-            # TODO generate sessid
             cur.execute("INSERT INTO logininfo VALUES (?, ?, ?)", (str(uuid.uuid4()).replace('-',''), res[0][0], self.token))
             con.commit()
-            print('✅logged in')
+            print('✅Logged in.')
             return self.token
 
     def logout1(self, token):
@@ -68,7 +68,7 @@ class Session:
             cur = con.cursor()
             cur.execute("DELETE FROM logininfo WHERE token = ?", (token,))
             con.commit()
-            print('❌logged out')
+            print('⬆️Logged out.')
 
     def user(self, token):
         con = sql.connect('test.db')
